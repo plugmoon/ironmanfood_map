@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <title>販售據點</title>
+    <link rel="stylesheet" href="/css/styles.css">
+    <script defer src="/js/app.js"></script>
+  </head>
+  <body>
+    <main class="locator-page">
+      <header class="front-header">
+        <div>
+          <p class="eyebrow">Store Locator</p>
+          <h1>販售據點</h1>
+        </div>
+        <span class="status-pill" id="loadStatus">讀取中</span>
+      </header>
+
+      <section class="finder-bar" aria-label="搜尋條件">
+        <label class="search-field">
+          <span>關鍵字</span>
+          <input id="keywordInput" type="search" autocomplete="off" placeholder="商家、地址、電話">
+        </label>
+        <label>
+          <span>區域</span>
+          <select id="regionSelect">
+            <option value="">全部區域</option>
+          </select>
+        </label>
+        <label>
+          <span>行政區</span>
+          <select id="districtSelect">
+            <option value="">全部行政區</option>
+          </select>
+        </label>
+        <button class="primary-button" id="searchButton" type="button" title="搜尋">搜尋</button>
+        <button class="ghost-button" id="nearbyButton" type="button" title="附近據點">附近</button>
+      </section>
+
+      <section class="locator-layout">
+        <aside class="result-pane" aria-label="據點列表">
+          <div class="result-summary" id="resultSummary">0 個據點</div>
+          <div class="store-list" id="storeList"></div>
+        </aside>
+        <section class="map-pane" aria-label="Google 地圖">
+          <iframe id="mapFrame" class="map-canvas google-map-frame" title="Google 地圖" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
+        </section>
+      </section>
+    </main>
+  </body>
+</html>

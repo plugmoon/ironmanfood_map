@@ -255,15 +255,13 @@
     try {
       if (id) {
         await api(`/api/admin/locations/${id}`, { method: 'PUT', body: JSON.stringify(data) });
-        await loadRows();
-        resetForm();
         setMessage(el.formMessage, '已更新', 'success');
       } else {
         await api('/api/admin/locations', { method: 'POST', body: JSON.stringify(data) });
-        await loadRows();
-        resetForm();
         setMessage(el.formMessage, '已新增', 'success');
       }
+      await loadRows();
+      resetForm();
     } catch (error) {
       setMessage(el.formMessage, error.message, 'error');
     }
@@ -437,19 +435,6 @@
     });
   }
 
-  function bindGlobalErrors() {
-    window.addEventListener('error', (event) => {
-      const message = event.message || '後台發生未預期錯誤';
-      const target = el.formMessage || el.loginMessage || el.importMessage;
-      if (target) setMessage(target, message, 'error');
-    });
-    window.addEventListener('unhandledrejection', (event) => {
-      const message = event.reason?.message || '後台操作失敗';
-      const target = el.formMessage || el.loginMessage || el.importMessage;
-      if (target) setMessage(target, message, 'error');
-    });
-  }
-
   document.addEventListener('DOMContentLoaded', () => {
     [
       'loginView',
@@ -474,7 +459,6 @@
       el[id] = byId(id);
     });
     el.form = el.locationForm;
-    bindGlobalErrors();
     bind();
     updateMapPreview();
     checkSession();
