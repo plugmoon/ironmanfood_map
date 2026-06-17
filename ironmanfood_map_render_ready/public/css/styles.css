@@ -310,11 +310,6 @@ input[type="checkbox"] {
   background: #dfeae6;
 }
 
-.google-map-frame {
-  display: block;
-  border: 0;
-}
-
 .empty-state {
   border: 1px dashed var(--line);
   border-radius: 8px;

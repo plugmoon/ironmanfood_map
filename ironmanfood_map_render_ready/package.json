@@ -1,7 +1,7 @@
 {
   "name": "store-locator-line-web",
   "version": "1.0.0",
-  "description": "Standalone store locator for LINE Official rich menu usage, powered by Google Maps embed links.",
+  "description": "Standalone store locator for LINE Official rich menu usage, powered by Leaflet and OpenStreetMap.",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",

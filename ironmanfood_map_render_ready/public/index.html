@@ -4,7 +4,9 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <title>販售據點</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
     <link rel="stylesheet" href="/css/styles.css">
+    <script defer src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script defer src="/js/app.js"></script>
   </head>
   <body>
@@ -43,8 +45,8 @@
           <div class="result-summary" id="resultSummary">0 個據點</div>
           <div class="store-list" id="storeList"></div>
         </aside>
-        <section class="map-pane" aria-label="Google 地圖">
-          <iframe id="mapFrame" class="map-canvas google-map-frame" title="Google 地圖" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
+        <section class="map-pane" aria-label="地圖">
+          <div id="map" class="map-canvas"></div>
         </section>
       </section>
     </main>

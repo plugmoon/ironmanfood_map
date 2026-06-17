@@ -1,6 +1,6 @@
 # Ironmanfood 販售據點 Web App
 
-這是一個可直接部署的獨立販售據點系統，參考附件 WordPress 外掛的資料欄位與流程改寫而成，不依賴 WordPress。地圖採用 Google Maps iframe 與 Google Maps 搜尋連結，不需要 Google Maps API Key。
+這是一個可直接部署的獨立販售據點系統，參考附件 WordPress 外掛的資料欄位與流程改寫而成，不依賴 WordPress，也不使用 Google Map API。地圖採用 Leaflet + OpenStreetMap 圖資。
 
 ## 功能
 
@@ -86,11 +86,9 @@ station_code,region,name,city,district,address,manager_name,phone,show_manager,s
 
 外送與前台顯示欄位可填 `1`、`true`、`yes`、`是`、`有` 或 `支援` 表示開啟；空白或 `0` 表示關閉。
 
-## 地圖
+## 地圖與圖資
 
-程式沒有串接 Google Maps API，也不需要 API Key。前台與後台地圖使用 Google Maps `output=embed` iframe 顯示目前選取的據點；「開啟 Google 地圖」按鈕會使用 Google Maps 搜尋/導航連結。
-
-注意：無 API Key 的 iframe 模式無法像 Google Maps JavaScript API 一樣在同一張地圖上客製多個 pin。前台會在使用者點選據點時切換 Google 地圖到該商家位置。
+程式沒有使用 Google Map API。前台與後台地圖由 Leaflet 載入 OpenStreetMap tile。若正式站台流量很大，建議改接商用或自架的 OSM 相容 tile server。
 
 ## Render Blueprint 部署
 
