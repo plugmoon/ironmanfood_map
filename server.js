@@ -14,6 +14,7 @@ const HOST = process.env.HOST || '0.0.0.0';
 const PUBLIC_DIR = path.join(__dirname, 'public');
 const DATA_DIR = process.env.DATA_DIR ? path.resolve(process.env.DATA_DIR) : path.join(__dirname, 'data');
 const LOCATIONS_FILE = path.join(DATA_DIR, 'locations.json');
+const DATABASE_URL = process.env.DATABASE_URL || '';
 const ADMIN_USERNAME = process.env.ADMIN_USERNAME || 'admin';
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin12345';
 const SESSION_SECRET = process.env.SESSION_SECRET || 'dev-session-secret-change-me';
@@ -50,6 +51,30 @@ const textFields = [
   'phone',
   'business_hours',
   'map_url'
+];
+
+const locationColumns = [
+  'id',
+  'station_code',
+  'region',
+  'name',
+  'city',
+  'district',
+  'address',
+  'manager_name',
+  'phone',
+  'show_manager',
+  'show_phone',
+  'business_hours',
+  'support_uber',
+  'support_panda',
+  'map_url',
+  'lat',
+  'lng',
+  'status',
+  'sort_order',
+  'created_at',
+  'updated_at'
 ];
 
 const contentTypes = {
@@ -181,14 +206,124 @@ async function ensureDataStore() {
   }
 }
 
-async function readLocations() {
+async function readJsonLocationsFile() {
   await ensureDataStore();
   const raw = await fs.readFile(LOCATIONS_FILE, 'utf8');
   const data = JSON.parse(raw || '[]');
   return Array.isArray(data) ? data : [];
 }
 
+let pgPoolPromise = null;
+
+async function getPgPool() {
+  if (!DATABASE_URL) return null;
+  if (!pgPoolPromise) {
+    pgPoolPromise = (async () => {
+      const { Pool } = require('pg');
+      const ssl = process.env.DATABASE_SSL === 'true' ? { rejectUnauthorized: false } : undefined;
+      const pool = new Pool({
+        connectionString: DATABASE_URL,
+        ...(ssl ? { ssl } : {})
+      });
+      await ensurePgSchema(pool);
+      return pool;
+    })();
+  }
+  return pgPoolPromise;
+}
+
+async function ensurePgSchema(pool) {
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS locations (
+      id INTEGER PRIMARY KEY,
+      station_code TEXT NOT NULL DEFAULT '',
+      region TEXT NOT NULL DEFAULT '',
+      name TEXT NOT NULL,
+      city TEXT NOT NULL DEFAULT '',
+      district TEXT NOT NULL DEFAULT '',
+      address TEXT NOT NULL DEFAULT '',
+      manager_name TEXT NOT NULL DEFAULT '',
+      phone TEXT NOT NULL DEFAULT '',
+      show_manager INTEGER NOT NULL DEFAULT 1,
+      show_phone INTEGER NOT NULL DEFAULT 1,
+      business_hours TEXT NOT NULL DEFAULT '',
+      support_uber INTEGER NOT NULL DEFAULT 0,
+      support_panda INTEGER NOT NULL DEFAULT 0,
+      map_url TEXT NOT NULL DEFAULT '',
+      lat DOUBLE PRECISION,
+      lng DOUBLE PRECISION,
+      status INTEGER NOT NULL DEFAULT 1,
+      sort_order INTEGER NOT NULL DEFAULT 0,
+      created_at TIMESTAMPTZ NOT NULL,
+      updated_at TIMESTAMPTZ NOT NULL
+    )
+  `);
+  const countResult = await pool.query('SELECT COUNT(*)::int AS count FROM locations');
+  if (countResult.rows[0]?.count === 0) {
+    const seedLocations = (await readJsonLocationsFile()).map((item, index) => normalizeLocation(item, {
+      id: Number(item.id) || index + 1,
+      created_at: item.created_at
+    }));
+    if (seedLocations.length) {
+      await insertPgLocations(pool, seedLocations);
+    }
+  }
+}
+
+function pgRowToLocation(row) {
+  return {
+    ...row,
+    id: Number(row.id),
+    show_manager: cleanFlagWithDefault(row.show_manager, 1),
+    show_phone: cleanFlagWithDefault(row.show_phone, 1),
+    support_uber: cleanFlag(row.support_uber),
+    support_panda: cleanFlag(row.support_panda),
+    status: cleanFlagWithDefault(row.status, 1),
+    sort_order: Number(row.sort_order) || 0,
+    lat: row.lat === null || row.lat === undefined ? null : Number(row.lat),
+    lng: row.lng === null || row.lng === undefined ? null : Number(row.lng),
+    created_at: row.created_at instanceof Date ? row.created_at.toISOString() : row.created_at,
+    updated_at: row.updated_at instanceof Date ? row.updated_at.toISOString() : row.updated_at
+  };
+}
+
+async function insertPgLocations(client, locations) {
+  for (const item of locations) {
+    const values = locationColumns.map((column) => item[column] ?? null);
+    const placeholders = locationColumns.map((_, index) => `$${index + 1}`).join(', ');
+    await client.query(
+      `INSERT INTO locations (${locationColumns.join(', ')}) VALUES (${placeholders})`,
+      values
+    );
+  }
+}
+
+async function readLocations() {
+  const pool = await getPgPool();
+  if (pool) {
+    const result = await pool.query('SELECT * FROM locations ORDER BY sort_order ASC, id DESC');
+    return result.rows.map(pgRowToLocation);
+  }
+  return readJsonLocationsFile();
+}
+
 async function writeLocations(locations) {
+  const pool = await getPgPool();
+  if (pool) {
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      await client.query('TRUNCATE TABLE locations');
+      await insertPgLocations(client, locations);
+      await client.query('COMMIT');
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
+    return;
+  }
   await ensureDataStore();
   const tempPath = `${LOCATIONS_FILE}.tmp`;
   await fs.writeFile(tempPath, `${JSON.stringify(locations, null, 2)}\n`, 'utf8');
@@ -340,6 +475,11 @@ function locationsToCsv(locations) {
 
 async function handleApi(req, res, url) {
   const pathname = url.pathname;
+
+  if (req.method === 'GET' && pathname === '/healthz') {
+    writeJson(res, 200, { ok: true });
+    return true;
+  }
 
   if (req.method === 'GET' && pathname === '/api/locations') {
     const locations = await readLocations();

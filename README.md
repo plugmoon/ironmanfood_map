@@ -47,7 +47,7 @@ node server.js
 
 ## 部署
 
-此專案沒有 npm 套件依賴，支援 Node 18 以上。可部署到 Render、Railway、Zeabur、Fly.io、VPS 或 Docker 環境。
+此專案支援 Node 18 以上。正式部署時會使用 `pg` 套件連接 Postgres，可部署到 Render、Railway、Zeabur、Fly.io、VPS 或 Docker 環境。
 
 建議環境變數：
 
@@ -89,3 +89,18 @@ station_code,region,name,city,district,address,manager_name,phone,show_manager,s
 ## 地圖與圖資
 
 程式沒有使用 Google Map API。前台與後台地圖由 Leaflet 載入 OpenStreetMap tile。若正式站台流量很大，建議改接商用或自架的 OSM 相容 tile server。
+
+## Render Blueprint 部署
+
+專案根目錄已包含 `render.yaml`。上傳到 GitHub 後，可在 Render 使用 Blueprint 部署：
+
+1. 登入 Render，選擇 New +，再選 Blueprint。
+2. 連接 GitHub repository：`plugmoon/ironmanfood_map`。
+3. Render 會讀取 `render.yaml`，建立 `ironmanfood-map` Web Service 與 `ironmanfood-map-db` Postgres。
+4. 建立時輸入環境變數：
+   - `ADMIN_USERNAME`：後台帳號
+   - `ADMIN_PASSWORD`：後台密碼
+5. `SESSION_SECRET` 會自動生成，`DATABASE_URL` 會自動連到 Postgres。
+6. 部署完成後，把 Render 產生的 `https://...onrender.com/` 放到 LINE Official 圖文選單的「販售據點」URI。
+
+Render 上會使用 Postgres 保存後台資料；本機開發沒有 `DATABASE_URL` 時，仍使用 `data/locations.json`。
