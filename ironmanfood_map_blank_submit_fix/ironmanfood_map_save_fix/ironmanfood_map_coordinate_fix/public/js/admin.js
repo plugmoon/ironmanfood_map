@@ -83,23 +83,15 @@
     return Number.isFinite(Number(row.lat)) && Number.isFinite(Number(row.lng));
   }
 
-  function placeText(row) {
-    return [row.city, row.district, row.address].filter(Boolean).join('');
-  }
-
   function mapQuery(row) {
-    if (row) {
-      const namedPlace = [row.name, placeText(row)].filter(Boolean).join(' ');
-      if (namedPlace) return namedPlace;
-      if (hasCoords(row)) return `${row.lat},${row.lng}`;
-      return '台灣';
-    }
-
+    if (row && hasCoords(row)) return `${row.lat},${row.lng}`;
+    if (row) return [row.city, row.district, row.address].filter(Boolean).join('') || row.name || '台灣';
     const form = el.form?.elements;
     if (form) {
-      const namedPlace = [form.name.value, [form.city.value, form.district.value, form.address.value].filter(Boolean).join('')].filter(Boolean).join(' ');
-      if (namedPlace) return namedPlace;
-      if (form.lat.value && form.lng.value) return `${form.lat.value},${form.lng.value}`;
+      const lat = form.lat.value;
+      const lng = form.lng.value;
+      if (lat && lng) return `${lat},${lng}`;
+      return [form.city.value, form.district.value, form.address.value].filter(Boolean).join('') || form.name.value || '台灣';
     }
     return '台灣';
   }
@@ -257,21 +249,19 @@
   }
 
   async function saveLocation(event) {
-    if (event) event.preventDefault();
+    event.preventDefault();
     const data = readForm();
     const id = Number(data.id);
     try {
       if (id) {
         await api(`/api/admin/locations/${id}`, { method: 'PUT', body: JSON.stringify(data) });
-        await loadRows();
-        resetForm();
         setMessage(el.formMessage, '已更新', 'success');
       } else {
         await api('/api/admin/locations', { method: 'POST', body: JSON.stringify(data) });
-        await loadRows();
-        resetForm();
         setMessage(el.formMessage, '已新增', 'success');
       }
+      await loadRows();
+      resetForm();
     } catch (error) {
       setMessage(el.formMessage, error.message, 'error');
     }
@@ -435,7 +425,6 @@
     el.loginForm.addEventListener('submit', login);
     el.logoutButton.addEventListener('click', logout);
     el.form.addEventListener('submit', saveLocation);
-    el.saveButton.addEventListener('click', saveLocation);
     el.resetButton.addEventListener('click', resetForm);
     el.locationRows.addEventListener('click', handleTableClick);
     el.adminKeyword.addEventListener('input', renderRows);
@@ -443,19 +432,6 @@
     el.csvInput.addEventListener('change', importCsv);
     ['name', 'city', 'district', 'address', 'lat', 'lng'].forEach((name) => {
       el.form.elements[name].addEventListener('change', () => updateMapPreview());
-    });
-  }
-
-  function bindGlobalErrors() {
-    window.addEventListener('error', (event) => {
-      const message = event.message || '後台發生未預期錯誤';
-      const target = el.formMessage || el.loginMessage || el.importMessage;
-      if (target) setMessage(target, message, 'error');
-    });
-    window.addEventListener('unhandledrejection', (event) => {
-      const message = event.reason?.message || '後台操作失敗';
-      const target = el.formMessage || el.loginMessage || el.importMessage;
-      if (target) setMessage(target, message, 'error');
     });
   }
 
@@ -469,7 +445,6 @@
       'loginMessage',
       'logoutButton',
       'locationForm',
-      'saveButton',
       'formTitle',
       'formMessage',
       'resetButton',
@@ -484,7 +459,6 @@
       el[id] = byId(id);
     });
     el.form = el.locationForm;
-    bindGlobalErrors();
     bind();
     updateMapPreview();
     checkSession();

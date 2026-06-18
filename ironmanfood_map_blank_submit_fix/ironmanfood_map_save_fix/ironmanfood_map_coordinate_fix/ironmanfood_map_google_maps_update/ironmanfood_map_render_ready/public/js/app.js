@@ -1,9 +1,13 @@
 (function () {
+  const TaiwanCenter = [23.6978, 120.9605];
   const elements = {};
   const state = {
     locations: [],
     filtered: [],
     selectedId: null,
+    map: null,
+    markers: null,
+    userLayer: null,
     userLocation: null
   };
 
@@ -33,33 +37,12 @@
     return [item.city, item.district, item.address].filter(Boolean).join('');
   }
 
-  function locationQuery(item) {
-    if (!item) return '台灣';
-    const place = placeText(item);
-    const namedPlace = [item.name, place].filter(Boolean).join(' ');
-    if (namedPlace) return namedPlace;
-    if (hasCoords(item)) return `${item.lat},${item.lng}`;
-    return '台灣';
-  }
-
-  function googleSearchEmbedUrl(item, zoom = 16) {
-    return `https://www.google.com/maps?q=${encodeURIComponent(locationQuery(item))}&z=${zoom}&output=embed`;
-  }
-
-  function googleAllLocationsEmbedUrl(items) {
-    const rows = items.filter((item) => locationQuery(item) !== '台灣');
-    if (!rows.length) return googleSearchEmbedUrl(null, 7);
-    if (rows.length === 1) return googleSearchEmbedUrl(rows[0], 16);
-
-    const limitedRows = rows.slice(0, 10);
-    const path = limitedRows.map((item) => encodeURIComponent(locationQuery(item))).join('/');
-    return `https://www.google.com/maps/dir/${path}/?hl=zh-TW&output=embed`;
-  }
-
   function navUrl(item) {
-    if (!item) return 'https://www.google.com/maps';
-    if (!item.name && !placeText(item) && item.map_url) return item.map_url;
-    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(locationQuery(item))}`;
+    if (item.map_url) return item.map_url;
+    if (hasCoords(item)) {
+      return `https://www.openstreetmap.org/?mlat=${encodeURIComponent(item.lat)}&mlon=${encodeURIComponent(item.lng)}#map=17/${encodeURIComponent(item.lat)}/${encodeURIComponent(item.lng)}`;
+    }
+    return `https://www.openstreetmap.org/search?query=${encodeURIComponent(placeText(item) || item.name)}`;
   }
 
   function linkTarget() {
@@ -144,9 +127,6 @@
       });
     }
 
-    if (!state.filtered.some((item) => item.id === state.selectedId)) {
-      state.selectedId = null;
-    }
     render();
   }
 
@@ -167,17 +147,24 @@
         <div class="store-detail">${escapeHtml(placeText(item) || '地址未設定')}</div>
         <div class="store-detail">${[manager, phone, hours].filter(Boolean).join(' / ')}</div>
         <div class="store-actions">
-          <a class="link-button" href="${escapeHtml(navUrl(item))}" target="${linkTarget()}" rel="noopener">開啟 Google 地圖</a>
+          <a class="link-button" href="${escapeHtml(navUrl(item))}" target="${linkTarget()}" rel="noopener">開啟地圖</a>
         </div>
       </article>
     `;
   }
 
+  function popupHtml(item) {
+    return `
+      <span class="popup-title">${escapeHtml(item.name)}</span>
+      ${escapeHtml(placeText(item) || '')}<br>
+      ${Number(item.show_phone ?? 1) === 1 && item.phone ? escapeHtml(item.phone) : ''}
+      ${item.business_hours ? `<br>營業時間 ${escapeHtml(item.business_hours)}` : ''}
+      ${deliveryLabels(item).length ? `<br>${escapeHtml(deliveryLabels(item).join(' / '))}` : ''}
+    `;
+  }
+
   function renderList() {
-    const allButton = state.selectedId
-      ? '<button class="text-button" type="button" id="showAllMapButton">顯示全部據點</button>'
-      : '';
-    elements.resultSummary.innerHTML = `<span>${state.filtered.length} 個據點</span>${allButton}`;
+    elements.resultSummary.textContent = `${state.filtered.length} 個據點`;
     if (!state.filtered.length) {
       elements.storeList.innerHTML = '<div class="empty-state">沒有符合條件的據點</div>';
       return;
@@ -186,9 +173,24 @@
   }
 
   function renderMap() {
-    const selected = state.filtered.find((item) => item.id === state.selectedId) || null;
-    elements.mapFrame.src = selected ? googleSearchEmbedUrl(selected) : googleAllLocationsEmbedUrl(state.filtered);
-    elements.mapFrame.title = selected ? `${selected.name} Google 地圖` : '全部據點 Google 地圖';
+    state.markers.clearLayers();
+    const bounds = [];
+
+    state.filtered.forEach((item) => {
+      if (!hasCoords(item)) return;
+      const latLng = [Number(item.lat), Number(item.lng)];
+      bounds.push(latLng);
+      const marker = L.marker(latLng).addTo(state.markers);
+      marker.bindPopup(popupHtml(item));
+      marker.on('click', () => selectStore(item.id, false));
+      marker.locationId = item.id;
+    });
+
+    if (bounds.length) {
+      state.map.fitBounds(bounds, { padding: [36, 36], maxZoom: 15 });
+    } else {
+      state.map.setView(TaiwanCenter, 7);
+    }
   }
 
   function render() {
@@ -198,10 +200,26 @@
 
   function selectStore(id, moveMap) {
     state.selectedId = id;
-    render();
-    if (moveMap && window.innerWidth < 960) {
-      byId('mapFrame').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    const item = state.filtered.find((row) => row.id === id);
+    renderList();
+    if (!item || !hasCoords(item) || moveMap === false) return;
+    state.map.setView([Number(item.lat), Number(item.lng)], 16);
+    state.markers.eachLayer((marker) => {
+      if (marker.locationId === id) marker.openPopup();
+    });
+    if (window.innerWidth < 960) {
+      byId('map').scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
+  }
+
+  function setupMap() {
+    state.map = L.map('map', { zoomControl: true }).setView(TaiwanCenter, 7);
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(state.map);
+    state.markers = L.layerGroup().addTo(state.map);
+    state.userLayer = L.layerGroup().addTo(state.map);
   }
 
   async function loadLocations() {
@@ -209,14 +227,13 @@
       const response = await fetch('/api/locations', { cache: 'no-store' });
       if (!response.ok) throw new Error('讀取失敗');
       state.locations = await response.json();
-      state.selectedId = null;
       refreshFilters();
       filterLocations();
       setStatus('已更新');
+      setTimeout(() => state.map.invalidateSize(), 120);
     } catch (error) {
       setStatus('讀取失敗');
       elements.storeList.innerHTML = '<div class="empty-state">目前無法讀取據點資料</div>';
-      renderMap();
     }
   }
 
@@ -231,6 +248,14 @@
         lat: position.coords.latitude,
         lng: position.coords.longitude
       };
+      state.userLayer.clearLayers();
+      L.circleMarker([state.userLocation.lat, state.userLocation.lng], {
+        radius: 8,
+        weight: 3,
+        color: '#b76e00',
+        fillColor: '#f59e0b',
+        fillOpacity: 0.8
+      }).addTo(state.userLayer).bindPopup('目前位置');
       filterLocations();
       setStatus('附近優先');
     }, () => setStatus('定位失敗'), {
@@ -249,20 +274,10 @@
       if (!elements.keywordInput.value) filterLocations();
     });
     elements.regionSelect.addEventListener('change', () => {
-      state.selectedId = null;
       refreshFilters();
       filterLocations();
     });
-    elements.districtSelect.addEventListener('change', () => {
-      state.selectedId = null;
-      filterLocations();
-    });
-    elements.resultSummary.addEventListener('click', (event) => {
-      if (event.target.closest('#showAllMapButton')) {
-        state.selectedId = null;
-        render();
-      }
-    });
+    elements.districtSelect.addEventListener('change', filterLocations);
     elements.storeList.addEventListener('click', (event) => {
       if (event.target.closest('a')) return;
       const card = event.target.closest('.store-card');
@@ -271,9 +286,10 @@
   }
 
   document.addEventListener('DOMContentLoaded', () => {
-    ['keywordInput', 'regionSelect', 'districtSelect', 'searchButton', 'nearbyButton', 'loadStatus', 'resultSummary', 'storeList', 'mapFrame'].forEach((id) => {
+    ['keywordInput', 'regionSelect', 'districtSelect', 'searchButton', 'nearbyButton', 'loadStatus', 'resultSummary', 'storeList'].forEach((id) => {
       elements[id] = byId(id);
     });
+    setupMap();
     bindEvents();
     loadLocations();
   });

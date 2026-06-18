@@ -1,4 +1,5 @@
 (function () {
+  const TaiwanCenter = [23.6978, 120.9605];
   const fields = [
     'id',
     'station_code',
@@ -22,7 +23,9 @@
   ];
 
   const state = {
-    rows: []
+    rows: [],
+    map: null,
+    marker: null
   };
 
   const el = {};
@@ -70,7 +73,7 @@
     el.adminView.hidden = false;
     el.adminSession.hidden = false;
     el.sessionName.textContent = username;
-    updateMapPreview();
+    setTimeout(() => state.map.invalidateSize(), 120);
   }
 
   function showLogin() {
@@ -81,36 +84,6 @@
 
   function hasCoords(row) {
     return Number.isFinite(Number(row.lat)) && Number.isFinite(Number(row.lng));
-  }
-
-  function placeText(row) {
-    return [row.city, row.district, row.address].filter(Boolean).join('');
-  }
-
-  function mapQuery(row) {
-    if (row) {
-      const namedPlace = [row.name, placeText(row)].filter(Boolean).join(' ');
-      if (namedPlace) return namedPlace;
-      if (hasCoords(row)) return `${row.lat},${row.lng}`;
-      return '台灣';
-    }
-
-    const form = el.form?.elements;
-    if (form) {
-      const namedPlace = [form.name.value, [form.city.value, form.district.value, form.address.value].filter(Boolean).join('')].filter(Boolean).join(' ');
-      if (namedPlace) return namedPlace;
-      if (form.lat.value && form.lng.value) return `${form.lat.value},${form.lng.value}`;
-    }
-    return '台灣';
-  }
-
-  function googleEmbedUrl(row) {
-    return `https://www.google.com/maps?q=${encodeURIComponent(mapQuery(row))}&z=16&output=embed`;
-  }
-
-  function updateMapPreview(row) {
-    if (!el.adminMap) return;
-    el.adminMap.src = googleEmbedUrl(row);
   }
 
   function deliveryLabels(row) {
@@ -125,6 +98,35 @@
       Number(row.show_manager ?? 1) === 1 ? '' : '負責人前台隱藏',
       Number(row.show_phone ?? 1) === 1 ? '' : '電話前台隱藏'
     ].filter(Boolean);
+  }
+
+  function updatePicker(lat, lng) {
+    if (!Number.isFinite(Number(lat)) || !Number.isFinite(Number(lng))) return;
+    const point = [Number(lat), Number(lng)];
+    if (!state.marker) {
+      state.marker = L.marker(point, { draggable: true }).addTo(state.map);
+      state.marker.on('dragend', () => {
+        const next = state.marker.getLatLng();
+        el.form.elements.lat.value = next.lat.toFixed(6);
+        el.form.elements.lng.value = next.lng.toFixed(6);
+      });
+    } else {
+      state.marker.setLatLng(point);
+    }
+    state.map.setView(point, 15);
+  }
+
+  function setupMap() {
+    state.map = L.map('adminMap').setView(TaiwanCenter, 7);
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(state.map);
+    state.map.on('click', (event) => {
+      el.form.elements.lat.value = event.latlng.lat.toFixed(6);
+      el.form.elements.lng.value = event.latlng.lng.toFixed(6);
+      updatePicker(event.latlng.lat, event.latlng.lng);
+    });
   }
 
   async function checkSession() {
@@ -239,7 +241,7 @@
     });
     el.formTitle.textContent = row.id ? '編輯據點' : '新增據點';
     setMessage(el.formMessage, '', '');
-    updateMapPreview(row);
+    if (hasCoords(row)) updatePicker(row.lat, row.lng);
   }
 
   function resetForm() {
@@ -253,25 +255,27 @@
     el.form.elements.support_panda.checked = false;
     el.formTitle.textContent = '新增據點';
     setMessage(el.formMessage, '', '');
-    updateMapPreview();
+    if (state.marker) {
+      state.marker.remove();
+      state.marker = null;
+    }
+    state.map.setView(TaiwanCenter, 7);
   }
 
   async function saveLocation(event) {
-    if (event) event.preventDefault();
+    event.preventDefault();
     const data = readForm();
     const id = Number(data.id);
     try {
       if (id) {
         await api(`/api/admin/locations/${id}`, { method: 'PUT', body: JSON.stringify(data) });
-        await loadRows();
-        resetForm();
         setMessage(el.formMessage, '已更新', 'success');
       } else {
         await api('/api/admin/locations', { method: 'POST', body: JSON.stringify(data) });
-        await loadRows();
-        resetForm();
         setMessage(el.formMessage, '已新增', 'success');
       }
+      await loadRows();
+      resetForm();
     } catch (error) {
       setMessage(el.formMessage, error.message, 'error');
     }
@@ -342,8 +346,6 @@
     const aliases = {
       google_map_url: 'map_url',
       '地圖連結': 'map_url',
-      'Google地圖連結': 'map_url',
-      'Google 地圖連結': 'map_url',
       '導航連結': 'map_url',
       '站別': 'station_code',
       '站別代碼': 'station_code',
@@ -435,28 +437,13 @@
     el.loginForm.addEventListener('submit', login);
     el.logoutButton.addEventListener('click', logout);
     el.form.addEventListener('submit', saveLocation);
-    el.saveButton.addEventListener('click', saveLocation);
     el.resetButton.addEventListener('click', resetForm);
     el.locationRows.addEventListener('click', handleTableClick);
     el.adminKeyword.addEventListener('input', renderRows);
     el.adminStatus.addEventListener('change', renderRows);
     el.csvInput.addEventListener('change', importCsv);
-    ['name', 'city', 'district', 'address', 'lat', 'lng'].forEach((name) => {
-      el.form.elements[name].addEventListener('change', () => updateMapPreview());
-    });
-  }
-
-  function bindGlobalErrors() {
-    window.addEventListener('error', (event) => {
-      const message = event.message || '後台發生未預期錯誤';
-      const target = el.formMessage || el.loginMessage || el.importMessage;
-      if (target) setMessage(target, message, 'error');
-    });
-    window.addEventListener('unhandledrejection', (event) => {
-      const message = event.reason?.message || '後台操作失敗';
-      const target = el.formMessage || el.loginMessage || el.importMessage;
-      if (target) setMessage(target, message, 'error');
-    });
+    el.form.elements.lat.addEventListener('change', () => updatePicker(el.form.elements.lat.value, el.form.elements.lng.value));
+    el.form.elements.lng.addEventListener('change', () => updatePicker(el.form.elements.lat.value, el.form.elements.lng.value));
   }
 
   document.addEventListener('DOMContentLoaded', () => {
@@ -469,7 +456,6 @@
       'loginMessage',
       'logoutButton',
       'locationForm',
-      'saveButton',
       'formTitle',
       'formMessage',
       'resetButton',
@@ -478,15 +464,13 @@
       'adminStatus',
       'csvInput',
       'importMode',
-      'importMessage',
-      'adminMap'
+      'importMessage'
     ].forEach((id) => {
       el[id] = byId(id);
     });
     el.form = el.locationForm;
-    bindGlobalErrors();
+    setupMap();
     bind();
-    updateMapPreview();
     checkSession();
   });
 }());

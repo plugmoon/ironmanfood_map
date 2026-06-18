@@ -258,33 +258,6 @@ async function ensurePgSchema(pool) {
       updated_at TIMESTAMPTZ NOT NULL
     )
   `);
-
-  const migrations = [
-    "ALTER TABLE locations ADD COLUMN IF NOT EXISTS station_code TEXT NOT NULL DEFAULT ''",
-    "ALTER TABLE locations ADD COLUMN IF NOT EXISTS region TEXT NOT NULL DEFAULT ''",
-    "ALTER TABLE locations ADD COLUMN IF NOT EXISTS name TEXT NOT NULL DEFAULT ''",
-    "ALTER TABLE locations ADD COLUMN IF NOT EXISTS city TEXT NOT NULL DEFAULT ''",
-    "ALTER TABLE locations ADD COLUMN IF NOT EXISTS district TEXT NOT NULL DEFAULT ''",
-    "ALTER TABLE locations ADD COLUMN IF NOT EXISTS address TEXT NOT NULL DEFAULT ''",
-    "ALTER TABLE locations ADD COLUMN IF NOT EXISTS manager_name TEXT NOT NULL DEFAULT ''",
-    "ALTER TABLE locations ADD COLUMN IF NOT EXISTS phone TEXT NOT NULL DEFAULT ''",
-    "ALTER TABLE locations ADD COLUMN IF NOT EXISTS show_manager INTEGER NOT NULL DEFAULT 1",
-    "ALTER TABLE locations ADD COLUMN IF NOT EXISTS show_phone INTEGER NOT NULL DEFAULT 1",
-    "ALTER TABLE locations ADD COLUMN IF NOT EXISTS business_hours TEXT NOT NULL DEFAULT ''",
-    "ALTER TABLE locations ADD COLUMN IF NOT EXISTS support_uber INTEGER NOT NULL DEFAULT 0",
-    "ALTER TABLE locations ADD COLUMN IF NOT EXISTS support_panda INTEGER NOT NULL DEFAULT 0",
-    "ALTER TABLE locations ADD COLUMN IF NOT EXISTS map_url TEXT NOT NULL DEFAULT ''",
-    "ALTER TABLE locations ADD COLUMN IF NOT EXISTS lat DOUBLE PRECISION",
-    "ALTER TABLE locations ADD COLUMN IF NOT EXISTS lng DOUBLE PRECISION",
-    "ALTER TABLE locations ADD COLUMN IF NOT EXISTS status INTEGER NOT NULL DEFAULT 1",
-    "ALTER TABLE locations ADD COLUMN IF NOT EXISTS sort_order INTEGER NOT NULL DEFAULT 0",
-    "ALTER TABLE locations ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()",
-    "ALTER TABLE locations ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()"
-  ];
-  for (const sql of migrations) {
-    await pool.query(sql);
-  }
-
   const countResult = await pool.query('SELECT COUNT(*)::int AS count FROM locations');
   if (countResult.rows[0]?.count === 0) {
     const seedLocations = (await readJsonLocationsFile()).map((item, index) => normalizeLocation(item, {

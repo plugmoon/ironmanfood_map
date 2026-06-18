@@ -221,10 +221,6 @@ input[type="checkbox"] {
 }
 
 .result-summary {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
   min-height: 48px;
   border-bottom: 1px solid var(--line);
   padding: 14px 16px;
@@ -312,11 +308,6 @@ input[type="checkbox"] {
   height: 100%;
   min-height: 640px;
   background: #dfeae6;
-}
-
-.google-map-frame {
-  display: block;
-  border: 0;
 }
 
 .empty-state {

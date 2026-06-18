@@ -39,7 +39,7 @@
             <h1 id="formTitle">新增據點</h1>
             <button id="resetButton" class="ghost-button compact" type="button">清空</button>
           </div>
-          <form id="locationForm" class="location-form" method="post" action="#" novalidate onsubmit="return false">
+          <form id="locationForm" class="location-form">
             <input type="hidden" name="id">
             <label>
               <span>站別代碼</span>
@@ -123,7 +123,7 @@
               <input name="map_url" type="url" autocomplete="off" placeholder="可留空，前台會用地址或座標開啟 Google 地圖">
             </label>
             <div class="form-actions wide">
-              <button class="primary-button" id="saveButton" type="button">儲存</button>
+              <button class="primary-button" type="submit">儲存</button>
               <p class="form-message" id="formMessage" role="status"></p>
             </div>
           </form>
