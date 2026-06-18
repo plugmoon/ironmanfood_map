@@ -4,7 +4,8 @@
     locations: [],
     filtered: [],
     selectedId: null,
-    userLocation: null
+    userLocation: null,
+    loadingStartedAt: Date.now()
   };
 
   function byId(id) {
@@ -105,6 +106,18 @@
 
   function setStatus(text) {
     elements.loadStatus.textContent = text;
+  }
+
+  function finishInitialLoading() {
+    if (!elements.appLoading || document.body.classList.contains('app-ready')) return;
+    const elapsed = Date.now() - state.loadingStartedAt;
+    const delay = Math.max(0, 450 - elapsed);
+    window.setTimeout(() => {
+      document.body.classList.add('app-ready');
+      window.setTimeout(() => {
+        if (elements.appLoading) elements.appLoading.remove();
+      }, 360);
+    }, delay);
   }
 
   function fillSelect(select, values, placeholder, currentValue) {
@@ -230,6 +243,8 @@
       setStatus('讀取失敗');
       elements.storeList.innerHTML = '<div class="empty-state">目前無法讀取據點資料</div>';
       renderMap();
+    } finally {
+      finishInitialLoading();
     }
   }
 
@@ -284,7 +299,7 @@
   }
 
   document.addEventListener('DOMContentLoaded', () => {
-    ['keywordInput', 'regionSelect', 'districtSelect', 'searchButton', 'nearbyButton', 'loadStatus', 'resultSummary', 'storeList', 'mapFrame'].forEach((id) => {
+    ['appLoading', 'keywordInput', 'regionSelect', 'districtSelect', 'searchButton', 'nearbyButton', 'loadStatus', 'resultSummary', 'storeList', 'mapFrame'].forEach((id) => {
       elements[id] = byId(id);
     });
     bindEvents();

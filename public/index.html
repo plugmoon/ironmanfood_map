@@ -4,17 +4,26 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <title>販售據點</title>
-    <link rel="stylesheet" href="/css/styles.css">
-    <script defer src="/js/app.js?v=directembed20260618"></script>
+    <link rel="preconnect" href="https://www.google.com">
+    <link rel="preconnect" href="https://maps.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="/css/styles.css?v=loading20260618">
+    <script defer src="/js/app.js?v=loading20260618"></script>
   </head>
   <body>
+    <div class="app-loading" id="appLoading" role="status" aria-live="polite">
+      <div class="loading-card">
+        <div class="loading-spinner" aria-hidden="true"></div>
+        <p>銷售據點載入中</p>
+        <span>正在整理販售據點資訊，請稍候</span>
+      </div>
+    </div>
     <main class="locator-page">
       <header class="front-header">
         <div>
           <p class="eyebrow">Store Locator</p>
           <h1>販售據點</h1>
         </div>
-        <span class="status-pill" id="loadStatus">讀取中</span>
+        <span class="status-pill" id="loadStatus">銷售據點載入中</span>
       </header>
 
       <section class="finder-bar" aria-label="搜尋條件">
