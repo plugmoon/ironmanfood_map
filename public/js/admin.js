@@ -104,8 +104,18 @@
     return '台灣';
   }
 
+  function base64UrlUtf8(value) {
+    const bytes = new TextEncoder().encode(value || 'Taiwan');
+    let binary = '';
+    bytes.forEach((byte) => {
+      binary += String.fromCharCode(byte);
+    });
+    return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+  }
+
   function googleEmbedUrl(row) {
-    return `https://maps.google.com/maps?q=${encodeURIComponent(mapQuery(row))}&z=16&output=embed`;
+    const encodedQuery = base64UrlUtf8(mapQuery(row));
+    return `https://www.google.com/maps/embed?origin=mfe&pb=!1m3!2m1!1z${encodedQuery}!6i16!3m1!1szh-TW!5m1!1szh-TW`;
   }
 
   function updateMapPreview(row) {

@@ -42,8 +42,22 @@
     return '台灣';
   }
 
+  function base64UrlUtf8(value) {
+    const bytes = new TextEncoder().encode(value || '台灣');
+    let binary = '';
+    bytes.forEach((byte) => {
+      binary += String.fromCharCode(byte);
+    });
+    return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+  }
+
+  function googleEmbedUrlFromQuery(query, zoom) {
+    const encodedQuery = base64UrlUtf8(query);
+    return `https://www.google.com/maps/embed?origin=mfe&pb=!1m3!2m1!1z${encodedQuery}!6i${zoom}!3m1!1szh-TW!5m1!1szh-TW`;
+  }
+
   function googleSearchEmbedUrl(item, zoom = 16) {
-    return `https://maps.google.com/maps?q=${encodeURIComponent(locationQuery(item))}&z=${zoom}&output=embed`;
+    return googleEmbedUrlFromQuery(locationQuery(item), zoom);
   }
 
   function googleAllLocationsEmbedUrl(items) {
@@ -52,7 +66,7 @@
     if (rows.length === 1) return googleSearchEmbedUrl(rows[0], 16);
 
     const query = rows.slice(0, 10).map(locationQuery).join(' | ');
-    return `https://maps.google.com/maps?q=${encodeURIComponent(query)}&z=12&output=embed`;
+    return googleEmbedUrlFromQuery(query, 12);
   }
 
   function navUrl(item) {
