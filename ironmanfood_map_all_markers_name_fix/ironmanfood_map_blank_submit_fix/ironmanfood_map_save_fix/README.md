@@ -88,9 +88,9 @@ station_code,region,name,city,district,address,manager_name,phone,show_manager,s
 
 ## 地圖
 
-程式沒有串接 Google Maps API，也不需要 API Key。前台預設會用 Google Maps 搜尋 iframe 顯示目前列表中的據點；點選單一據點時，地圖會切換到該據點。「開啟 Google 地圖」按鈕會使用「據點名稱 + 地址」查詢，避免 Google 只顯示經緯度。
+程式沒有串接 Google Maps API，也不需要 API Key。前台與後台地圖使用 Google Maps `output=embed` iframe 顯示目前選取的據點；「開啟 Google 地圖」按鈕會使用 Google Maps 搜尋/導航連結。
 
-注意：無 API Key 的 iframe 模式無法像 Google Maps JavaScript API 一樣客製多個 pin；預設多點顯示會使用 Google Maps 搜尋視圖。為避免 URL 過長，前台多點地圖最多取目前列表前 10 個據點。
+注意：無 API Key 的 iframe 模式無法像 Google Maps JavaScript API 一樣在同一張地圖上客製多個 pin。前台會在使用者點選據點時切換 Google 地圖到該商家位置。
 
 ## Render Blueprint 部署
 

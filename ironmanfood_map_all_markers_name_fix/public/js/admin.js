@@ -105,7 +105,7 @@
   }
 
   function googleEmbedUrl(row) {
-    return `https://maps.google.com/maps?q=${encodeURIComponent(mapQuery(row))}&z=16&output=embed`;
+    return `https://www.google.com/maps?q=${encodeURIComponent(mapQuery(row))}&z=16&output=embed`;
   }
 
   function updateMapPreview(row) {

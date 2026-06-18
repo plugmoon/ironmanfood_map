@@ -83,29 +83,21 @@
     return Number.isFinite(Number(row.lat)) && Number.isFinite(Number(row.lng));
   }
 
-  function placeText(row) {
-    return [row.city, row.district, row.address].filter(Boolean).join('');
-  }
-
   function mapQuery(row) {
-    if (row) {
-      const namedPlace = [row.name, placeText(row)].filter(Boolean).join(' ');
-      if (namedPlace) return namedPlace;
-      if (hasCoords(row)) return `${row.lat},${row.lng}`;
-      return '台灣';
-    }
-
+    if (row && hasCoords(row)) return `${row.lat},${row.lng}`;
+    if (row) return [row.city, row.district, row.address].filter(Boolean).join('') || row.name || '台灣';
     const form = el.form?.elements;
     if (form) {
-      const namedPlace = [form.name.value, [form.city.value, form.district.value, form.address.value].filter(Boolean).join('')].filter(Boolean).join(' ');
-      if (namedPlace) return namedPlace;
-      if (form.lat.value && form.lng.value) return `${form.lat.value},${form.lng.value}`;
+      const lat = form.lat.value;
+      const lng = form.lng.value;
+      if (lat && lng) return `${lat},${lng}`;
+      return [form.city.value, form.district.value, form.address.value].filter(Boolean).join('') || form.name.value || '台灣';
     }
     return '台灣';
   }
 
   function googleEmbedUrl(row) {
-    return `https://maps.google.com/maps?q=${encodeURIComponent(mapQuery(row))}&z=16&output=embed`;
+    return `https://www.google.com/maps?q=${encodeURIComponent(mapQuery(row))}&z=16&output=embed`;
   }
 
   function updateMapPreview(row) {

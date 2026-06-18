@@ -43,7 +43,7 @@
   }
 
   function googleSearchEmbedUrl(item, zoom = 16) {
-    return `https://maps.google.com/maps?q=${encodeURIComponent(locationQuery(item))}&z=${zoom}&output=embed`;
+    return `https://www.google.com/maps?q=${encodeURIComponent(locationQuery(item))}&z=${zoom}&output=embed`;
   }
 
   function googleAllLocationsEmbedUrl(items) {
@@ -51,8 +51,9 @@
     if (!rows.length) return googleSearchEmbedUrl(null, 7);
     if (rows.length === 1) return googleSearchEmbedUrl(rows[0], 16);
 
-    const query = rows.slice(0, 10).map(locationQuery).join(' | ');
-    return `https://maps.google.com/maps?q=${encodeURIComponent(query)}&z=12&output=embed`;
+    const limitedRows = rows.slice(0, 10);
+    const path = limitedRows.map((item) => encodeURIComponent(locationQuery(item))).join('/');
+    return `https://www.google.com/maps/dir/${path}/?hl=zh-TW&output=embed`;
   }
 
   function navUrl(item) {

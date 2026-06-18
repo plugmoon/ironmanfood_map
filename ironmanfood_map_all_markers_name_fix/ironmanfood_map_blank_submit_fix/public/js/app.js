@@ -33,32 +33,19 @@
     return [item.city, item.district, item.address].filter(Boolean).join('');
   }
 
-  function locationQuery(item) {
+  function mapQuery(item) {
     if (!item) return '台灣';
-    const place = placeText(item);
-    const namedPlace = [item.name, place].filter(Boolean).join(' ');
-    if (namedPlace) return namedPlace;
     if (hasCoords(item)) return `${item.lat},${item.lng}`;
-    return '台灣';
+    return placeText(item) || item.name || '台灣';
   }
 
-  function googleSearchEmbedUrl(item, zoom = 16) {
-    return `https://maps.google.com/maps?q=${encodeURIComponent(locationQuery(item))}&z=${zoom}&output=embed`;
-  }
-
-  function googleAllLocationsEmbedUrl(items) {
-    const rows = items.filter((item) => locationQuery(item) !== '台灣');
-    if (!rows.length) return googleSearchEmbedUrl(null, 7);
-    if (rows.length === 1) return googleSearchEmbedUrl(rows[0], 16);
-
-    const query = rows.slice(0, 10).map(locationQuery).join(' | ');
-    return `https://maps.google.com/maps?q=${encodeURIComponent(query)}&z=12&output=embed`;
+  function googleEmbedUrl(item) {
+    return `https://www.google.com/maps?q=${encodeURIComponent(mapQuery(item))}&z=16&output=embed`;
   }
 
   function navUrl(item) {
-    if (!item) return 'https://www.google.com/maps';
-    if (!item.name && !placeText(item) && item.map_url) return item.map_url;
-    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(locationQuery(item))}`;
+    if (item.map_url) return item.map_url;
+    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapQuery(item))}`;
   }
 
   function linkTarget() {
@@ -144,7 +131,7 @@
     }
 
     if (!state.filtered.some((item) => item.id === state.selectedId)) {
-      state.selectedId = null;
+      state.selectedId = state.filtered[0]?.id || null;
     }
     render();
   }
@@ -173,10 +160,7 @@
   }
 
   function renderList() {
-    const allButton = state.selectedId
-      ? '<button class="text-button" type="button" id="showAllMapButton">顯示全部據點</button>'
-      : '';
-    elements.resultSummary.innerHTML = `<span>${state.filtered.length} 個據點</span>${allButton}`;
+    elements.resultSummary.textContent = `${state.filtered.length} 個據點`;
     if (!state.filtered.length) {
       elements.storeList.innerHTML = '<div class="empty-state">沒有符合條件的據點</div>';
       return;
@@ -185,9 +169,9 @@
   }
 
   function renderMap() {
-    const selected = state.filtered.find((item) => item.id === state.selectedId) || null;
-    elements.mapFrame.src = selected ? googleSearchEmbedUrl(selected) : googleAllLocationsEmbedUrl(state.filtered);
-    elements.mapFrame.title = selected ? `${selected.name} Google 地圖` : '全部據點 Google 地圖';
+    const selected = state.filtered.find((item) => item.id === state.selectedId) || state.filtered[0] || null;
+    elements.mapFrame.src = googleEmbedUrl(selected);
+    elements.mapFrame.title = selected ? `${selected.name} Google 地圖` : 'Google 地圖';
   }
 
   function render() {
@@ -208,7 +192,7 @@
       const response = await fetch('/api/locations', { cache: 'no-store' });
       if (!response.ok) throw new Error('讀取失敗');
       state.locations = await response.json();
-      state.selectedId = null;
+      state.selectedId = state.locations[0]?.id || null;
       refreshFilters();
       filterLocations();
       setStatus('已更新');
@@ -248,20 +232,10 @@
       if (!elements.keywordInput.value) filterLocations();
     });
     elements.regionSelect.addEventListener('change', () => {
-      state.selectedId = null;
       refreshFilters();
       filterLocations();
     });
-    elements.districtSelect.addEventListener('change', () => {
-      state.selectedId = null;
-      filterLocations();
-    });
-    elements.resultSummary.addEventListener('click', (event) => {
-      if (event.target.closest('#showAllMapButton')) {
-        state.selectedId = null;
-        render();
-      }
-    });
+    elements.districtSelect.addEventListener('change', filterLocations);
     elements.storeList.addEventListener('click', (event) => {
       if (event.target.closest('a')) return;
       const card = event.target.closest('.store-card');
